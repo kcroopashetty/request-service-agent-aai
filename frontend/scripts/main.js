@@ -1,205 +1,208 @@
 import ApiService from "../services/apiService.js";
 
-const logList = document.getElementById("logList");
-const addLogBtn = document.getElementById("addLogBtn");
-const logModal = document.getElementById("logModal");
-const closeModalBtn = document.getElementById("closeModalBtn");
-const logForm = document.getElementById("logForm");
-const modalTitle = document.getElementById("modalTitle");
-const deleteConfirmModal = document.getElementById("deleteConfirmModal");
-const confirmDeleteBtn = document.getElementById("confirmDeleteBtn");
-const cancelDeleteBtn = document.getElementById("cancelDeleteBtn");
-
-let logToDeleteId = null;
-
-let editLogId = "";
-document.addEventListener("DOMContentLoaded", () => {
-  loadLogs();
-});
-
-async function loadLogs() {
-  try {
-    const logs = await ApiService.get("/vehicle_service_logs/");
-    renderLogs(logs);
-  } catch (error) {
-    console.error("Error fetching vehicle service logs:", error);
-    logList.innerHTML = `<p class="error-text">Failed to load vehicle service logs.</p>`;
-  }
+// ---------- Load Employees ----------
+async function getEmployeeMap() {
+    const employees = await ApiService.get("/employee/");
+    return Object.fromEntries(employees.map(emp => [emp.employee_id, emp]));
 }
 
-function renderLogs(logs = []) {
-  if (!logs.length) {
-    logList.innerHTML = `<p>No vehicle service logs found. Add a new one!</p>`;
-    return;
-  }
+async function populateEmployeeSelect(selectId, selectedId = "") {
+    const select = document.getElementById(selectId);
+    select.innerHTML = "<option value=''>-- Select Employee --</option>";
 
-  logList.innerHTML = logs
-    .map(
-      (log) => `
-        <div class="log-card">
-          <div class="log-info">
-            <h3>Vehicle ID: ${escapeHtml(log.vehicle_id)}</h3>
-            <p><strong>Owner Name:</strong> ${escapeHtml(log.owner_name || "N/A")}</p>
-            <p><strong>Vehicle Type:</strong> ${escapeHtml(log.vehicle_type || "N/A")}</p>
-            <p><strong>Service Date:</strong> ${escapeHtml(new Date(log.service_date).toLocaleDateString())}</p>
-            <p><strong>Service Type:</strong> ${escapeHtml(log.service_type)}</p>
-            <p><strong>Description:</strong> ${escapeHtml(log.description || "N/A")}</p>
-            <p><strong>Mileage:</strong> ${escapeHtml(log.mileage)}</p>
-            <p><strong>Cost:</strong> $${escapeHtml(log.cost)}</p>
-            <p><strong>Next Service Date:</strong> ${
-              log.next_service_date ? escapeHtml(new Date(log.next_service_date).toLocaleDateString()) : "N/A"
-            }</p>
-          </div>
-          <div class="log-actions">
-            <button
-              class="btn-edit"
-              data-action="edit"
-              data-id="${log.id}"
-              data-owner_name="${escapeHtml(log.owner_name || "")}"
-              data-vehicle_type="${escapeHtml(log.vehicle_type || "")}"
-              data-vehicle_id="${escapeHtml(log.vehicle_id)}"
-              data-service_date="${escapeHtml(log.service_date)}"
-              data-service_type="${escapeHtml(log.service_type)}"
-              data-description="${escapeHtml(log.description || "")}"
-              data-mileage="${escapeHtml(log.mileage)}"
-              data-cost="${escapeHtml(log.cost)}"
-              data-next_service_date="${escapeHtml(log.next_service_date || "")}"
-            >
-              <i class="fa-solid fa-pen"></i>
-            </button>
-            <button
-              class="btn-delete"
-              data-action="delete"
-              data-id="${log.id}"
-            >
-              <i class="fa-solid fa-trash"></i>
-            </button>
-          </div>
-        </div>
-      `
-    )
-    .join("");
-}
-
-addLogBtn.addEventListener("click", () => openLogModal());
-closeModalBtn.addEventListener("click", () => closeLogModal());
-cancelDeleteBtn.addEventListener("click", () => closeDeleteConfirmModal());
-confirmDeleteBtn.addEventListener("click", () => {
-  if (logToDeleteId) {
-    deleteLog(logToDeleteId);
-    closeDeleteConfirmModal();
-  }
-});
-
-function openLogModal(log = null) {
-  logModal.style.display = "flex";
-  if (log) {
-    modalTitle.textContent = "Edit Service Log";
-    document.getElementById("owner_name").value = log.owner_name;
-    document.getElementById("vehicle_type").value = log.vehicle_type;
-    document.getElementById("vehicle_id").value = log.vehicle_id;
-    document.getElementById("service_date").value = log.service_date.split("T")[0];
-    document.getElementById("service_type").value = log.service_type;
-    document.getElementById("description").value = log.description;
-    document.getElementById("mileage").value = log.mileage;
-    document.getElementById("cost").value = log.cost;
-    document.getElementById("next_service_date").value = log.next_service_date ? log.next_service_date.split("T")[0] : "";
-    editLogId = log.id;
-  } else {
-    modalTitle.textContent = "Add New Service Log";
-    logForm.reset();
-    editLogId = null;
-  }
-}
-
-function closeLogModal() {
-  logModal.style.display = "none";
-  editLogId = null;
-}
-
-function openDeleteConfirmModal(logId) {
-  logToDeleteId = logId;
-  deleteConfirmModal.style.display = "flex";
-}
-
-function closeDeleteConfirmModal() {
-  deleteConfirmModal.style.display = "none";
-  logToDeleteId = null;
-}
-
-logForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const logData = {
-    id: editLogId, // ID is generated by backend for new logs
-    owner_name: logForm.owner_name.value || null,
-    vehicle_type: logForm.vehicle_type.value || null,
-    vehicle_id: logForm.vehicle_id.value,
-    service_date: new Date(logForm.service_date.value).toISOString(),
-    service_type: logForm.service_type.value,
-    description: logForm.description.value,
-    mileage: parseInt(logForm.mileage.value),
-    cost: parseFloat(logForm.cost.value),
-    next_service_date: logForm.next_service_date.value ? new Date(logForm.next_service_date.value).toISOString() : null,
-  };
-
-  try {
-    if (editLogId) {
-      await ApiService.put(`/vehicle_service_logs/${editLogId}`, logData);
-    } else {
-      await ApiService.post("/vehicle_service_logs/", logData);
+    try {
+        const employees = await ApiService.get("/employee/");
+        employees.forEach(emp => {
+            const option = document.createElement("option");
+            option.value = emp.employee_id;
+            option.textContent = `${emp.name} (${emp.department})`;
+            if (emp.employee_id === selectedId) option.selected = true;
+            select.appendChild(option);
+        });
+    } catch (error) {
+        console.error("Error loading employees:", error);
+        select.innerHTML = "<option value=''>Failed to load employees</option>";
     }
-    closeLogModal();
-    loadLogs();
-  } catch (error) {
-    console.error("Error saving vehicle service log:", error);
-  }
-});
-
-async function deleteLog(id) {
-  try {
-    await ApiService.delete(`/vehicle_service_logs/${id}`);
-    loadLogs();
-  } catch (error) {
-    console.error("Error deleting vehicle service log:", error);
-  }
 }
 
-window.onclick = function (event) {
-  if (event.target === logModal || event.target === deleteConfirmModal) {
-    closeLogModal();
-    closeDeleteConfirmModal();
-  }
-};
+// ---------- Load Requests ----------
+async function loadRequests() {
+    const requestList = document.getElementById("request-list");
+    requestList.innerHTML = `<p>Loading requests...</p>`;
 
-function escapeHtml(str = "") {
-  return String(str)
-    .replaceAll("&", "&")
-    .replaceAll("<", "<")
-    .replaceAll(">", ">");
+    try {
+        const [requests, employeeMap] = await Promise.all([
+            ApiService.get("/request/"),
+            getEmployeeMap(),
+        ]);
+
+        requestList.innerHTML = "";
+
+        if (requests.length === 0) {
+            requestList.innerHTML = `<p>No requests found.</p>`;
+            return;
+        }
+
+        requests.forEach((req) => {
+            const employee = employeeMap[req.employee_id];
+            const approver = employeeMap[req.approver_by];
+
+            const item = document.createElement("div");
+            item.classList.add("request-item");
+
+            item.innerHTML = `
+        <div class="request-header">
+            <span class="request-id">${req.request_id}</span>
+            <span class="request-status status-${req.status}">${req.status}</span>
+        </div>
+        <div class="request-details">
+            <p><strong>Employee:</strong> ${employee ? employee.name : "Unknown"}</p>
+            <p><strong>Type:</strong> ${req.type}</p>
+            <p><strong>Approver:</strong> ${approver ? approver.name : "None"}</p>
+            <p><strong>Department:</strong> ${employee ? employee.department : "-"}</p>
+        </div>
+        <div class="request-actions">
+            <button class="edit-btn" data-id="${req.request_id}">✏️ Edit</button>
+            <button class="delete-btn" data-id="${req.request_id}">🗑 Delete</button>
+        </div>
+      `;
+
+            requestList.appendChild(item);
+        });
+
+        // Attach delete listeners
+        document.querySelectorAll(".delete-btn").forEach((btn) => {
+            btn.addEventListener("click", async (e) => {
+                const id = e.target.dataset.id;
+                // if (!confirm(`Are you sure you want to delete ${id}?`)) return;
+                console.log("Deleted Successfully")
+                try {
+                    await ApiService.delete(`/request/${id}`);
+                    alert("✅ Request deleted successfully!");
+                    await loadRequests();
+                } catch (error) {
+                    console.error("Error deleting request:", error);
+                    alert("❌ Failed to delete request.");
+                }
+            });
+        });
+
+        // Attach edit listeners
+        document.querySelectorAll(".edit-btn").forEach((btn) => {
+            btn.addEventListener("click", (e) => openEditModal(e.target.dataset.id));
+        });
+
+    } catch (error) {
+        console.error("Error loading requests:", error);
+        requestList.innerHTML = `<p class="error">⚠️ Failed to load requests.</p>`;
+    }
 }
 
+// ---------- Create New Request ----------
+function setupCreateModal() {
+    const modal = document.getElementById("create-modal");
+    const openBtn = document.getElementById("create-btn");
+    const cancelBtn = document.getElementById("cancel-btn");
+    const form = document.getElementById("create-form");
 
-logList.addEventListener("click", (e) => {
-  const btn = e.target.closest("button[data-action]");
-  if (!btn) return;
-  const action = btn.dataset.action;
-  const id = btn.dataset.id;
+    openBtn.addEventListener("click", async () => {
+        await populateEmployeeSelect("employee_id");
+        modal.style.display = "flex";
+    });
 
-  if (action === "edit") {
-    const data = {
-      id: btn.dataset.id || "",
-      owner_name: btn.dataset.owner_name || "",
-      vehicle_type: btn.dataset.vehicle_type || "",
-      vehicle_id: btn.dataset.vehicle_id || "",
-      service_date: btn.dataset.service_date || "",
-      service_type: btn.dataset.service_type || "",
-      description: btn.dataset.description || "",
-      mileage: parseInt(btn.dataset.mileage) || 0,
-      cost: parseFloat(btn.dataset.cost) || 0,
-      next_service_date: btn.dataset.next_service_date || "",
+    cancelBtn.addEventListener("click", () => {
+        modal.style.display = "none";
+        form.reset();
+    });
+
+    form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const newRequest = {
+            request_id: document.getElementById("request_id").value.trim(),
+            employee_id: document.getElementById("employee_id").value,
+            type: document.getElementById("type").value,
+            status: "pending",
+            approver_by: "None",
+        };
+
+        if (!newRequest.request_id.startsWith("REQ-")) {
+            alert("Request ID must start with 'REQ-' (e.g., REQ-006)");
+            return;
+        }
+
+        try {
+            const existingRequests = await ApiService.get("/request/");
+            if (existingRequests.some((r) => r.request_id === newRequest.request_id)) {
+                alert("⚠️ Request ID already exists. Please use a unique ID.");
+                return;
+            }
+
+            await ApiService.post("/request/", newRequest);
+            alert("✅ Request created successfully!");
+            modal.style.display = "none";
+            form.reset();
+            await loadRequests();
+        } catch (error) {
+            console.error("Error creating request:", error);
+            alert("❌ Failed to create request. Check console for details.");
+        }
+    });
+}
+
+// ---------- Edit Request Modal ----------
+async function openEditModal(requestId) {
+    const modal = document.getElementById("edit-modal");
+    const form = document.getElementById("edit-form");
+
+    try {
+        const request = await ApiService.get(`/request/`);
+        const reqData = request.find(r => r.request_id === requestId);
+        if (!reqData) {
+            alert("❌ Request not found.");
+            return;
+        }
+
+        document.getElementById("edit_request_id").value = reqData.request_id;
+        await populateEmployeeSelect("edit_employee_id", reqData.employee_id);
+        document.getElementById("edit_type").value = reqData.type;
+        document.getElementById("edit_status").value = reqData.status;
+        document.getElementById("edit_approver_by").value = reqData.approver_by;
+
+        modal.style.display = "flex";
+    } catch (error) {
+        console.error("Error loading request for edit:", error);
+    }
+
+    form.onsubmit = async (e) => {
+        e.preventDefault();
+
+        const updatedRequest = {
+            request_id: document.getElementById("edit_request_id").value,
+            employee_id: document.getElementById("edit_employee_id").value,
+            type: document.getElementById("edit_type").value,
+            status: document.getElementById("edit_status").value,
+            approver_by: document.getElementById("edit_approver_by").value,
+        };
+
+        try {
+            await ApiService.put(`/request/${requestId}`, updatedRequest);
+            alert("✅ Request updated successfully!");
+            modal.style.display = "none";
+            await loadRequests();
+        } catch (error) {
+            console.error("Error updating request:", error);
+            alert("❌ Failed to update request.");
+        }
     };
-    openLogModal(data);
-  } else if (action === "delete") {
-    openDeleteConfirmModal(id);
-  }
+
+    document.getElementById("edit-cancel-btn").onclick = () => {
+        modal.style.display = "none";
+    };
+}
+
+// ---------- Initialize ----------
+window.addEventListener("DOMContentLoaded", () => {
+    loadRequests();
+    setupCreateModal();
 });
