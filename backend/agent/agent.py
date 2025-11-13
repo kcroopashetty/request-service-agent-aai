@@ -19,6 +19,8 @@ from .tools import (
     get_department_with_highest_approval_rate,
     get_employee_with_most_rejected_requests,
 )
+# Advanced tools temporarily disabled for performance
+# from .advanced_tools import (...)
 from constants import AGENT_NAME, AGENT_DESCRIPTION, AGENT_MODEL
 from . import prompt
 

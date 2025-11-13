@@ -1173,7 +1173,7 @@ footer {
 
 /* ---------- Analytics Modal ---------- */
 .analytics-modal-large {
-    max-width: 700px;
+    max-width: 900px;
     max-height: 85vh;
     padding: 0;
     overflow-y: auto;
@@ -1242,7 +1242,7 @@ footer {
 
 .analytics-charts {
     display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
     gap: 1.5rem;
     padding: 1.5rem;
     background: var(--color-bg);
@@ -1282,7 +1282,7 @@ footer {
 
 .analytics-insights {
     display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
     gap: 1.5rem;
     padding: 0 1.5rem 1.5rem 1.5rem;
     background: var(--color-bg);
@@ -1319,6 +1319,11 @@ footer {
     .analytics-modal-large {
         max-width: 95%;
         max-height: 90vh;
+    }
+    
+    .analytics-charts,
+    .analytics-insights {
+        grid-template-columns: 1fr;
     }
 }
 
