@@ -1,6 +1,6 @@
 // API Service configuration
 const API_CONFIG = {
-    baseURL: "https://8080-kode-ws-bc848e8b0.hebbale.academy", // --- PASTE THE WORKSPACE URL HERE ---
+    baseURL: "https://8080-kode-ws-649d2eba3.hebbale.academy", // --- PASTE THE WORKSPACE URL HERE ---
     headers: {
         "Content-Type": "application/json",
     },

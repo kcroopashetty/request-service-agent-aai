@@ -12,16 +12,32 @@
     <!-- Main Styles -->
     <link rel="stylesheet" href="./styles/main.css" />
 
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
     <!-- Main Script -->
     <script type="module" src="./scripts/main.js" defer></script>
 </head>
 
 <body>
+    <!-- Loading Bar -->
+    <div id="loading-bar" class="loading-bar"></div>
+    
     <!-- Header -->
     <header>
         <h1>Employee Request Dashboard</h1>
         <nav class="navbar">
             <ul class="nav-actions">
+                <li>
+                    <button id="theme-toggle" title="Toggle Theme">
+                        <i class="fa fa-moon"></i>
+                    </button>
+                </li>
+                <li>
+                    <button id="notification-toggle" title="Toggle Desktop Notifications">
+                        <i class="fa fa-bell"></i>
+                    </button>
+                </li>
                 <li>
                     <a class="nav-link" href="./pages/chat.html">
                         <i class="fa fa-message"></i> Chat
@@ -35,13 +51,26 @@
     <main>
         <!-- Request List Section -->
         <section id="request-container" class="card">
+            <div id="stats-container"></div>
             <div class="card-header">
                 <h2>All Requests</h2>
-                <button id="create-btn" class="primary-btn">
-                    + Create Request
-                </button>
+                <div style="display: flex; gap: 1rem;">
+                    <button id="analytics-btn">
+                        <i class="fa fa-chart-pie"></i> Analytics
+                    </button>
+                    <button id="export-btn">
+                        <i class="fa fa-download"></i> Export CSV
+                    </button>
+                    <button id="create-btn" class="primary-btn">
+                        + Create Request
+                    </button>
+                </div>
             </div>
+            
             <div id="request-list" class="request-list"></div>
+            <div id="pagination"></div>
+            
+
         </section>
 
         <!-- Create Request Modal -->
@@ -51,7 +80,7 @@
                 <form id="create-form">
                     <label>
                         Request ID:
-                        <input type="text" id="request_id" placeholder="e.g., REQ-006" required />
+                        <input type="text" id="request_id" placeholder="Auto-generated" readonly style="background: var(--color-border); cursor: not-allowed;" />
                     </label>
 
                     <label>
@@ -92,6 +121,49 @@
                         </button>
                     </div>
                 </form>
+            </div>
+        </div>
+
+        <!-- Stats Detail Modal -->
+        <div id="stats-modal" class="modal">
+            <div class="modal-content analytics-modal-large">
+                <div class="analytics-header">
+                    <div>
+                        <h3><i class="fa fa-chart-pie"></i> Request Analytics</h3>
+                        <p class="analytics-subtitle">Comprehensive insights and trends</p>
+                    </div>
+                    <button id="stats-modal-close" class="close-btn">
+                        <i class="fa fa-times"></i>
+                    </button>
+                </div>
+                
+                <div class="analytics-charts">
+                    <div class="analytics-chart-card">
+                        <div class="chart-header">
+                            <i class="fa fa-tasks"></i>
+                            <span>Status Distribution</span>
+                        </div>
+                        <canvas id="stats-modal-chart"></canvas>
+                    </div>
+                    <div class="analytics-chart-card">
+                        <div class="chart-header">
+                            <i class="fa fa-layer-group"></i>
+                            <span>Request Types</span>
+                        </div>
+                        <canvas id="type-modal-chart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="analytics-insights">
+                    <div class="insight-card-modal">
+                        <h4><i class="fa fa-trophy"></i> Top Requesters</h4>
+                        <div id="leaderboard-modal"></div>
+                    </div>
+                    <div class="insight-card-modal">
+                        <h4><i class="fa fa-lightbulb"></i> Predictive Insights</h4>
+                        <div id="predictions-modal"></div>
+                    </div>
+                </div>
             </div>
         </div>
 

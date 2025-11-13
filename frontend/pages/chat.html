@@ -16,6 +16,26 @@
         <h1>Employee Request Dashboard</h1>
         <nav class="navbar">
             <ul class="nav-actions">
+                <li>
+                    <button id="theme-toggle" title="Toggle Theme">
+                        <i class="fa fa-moon"></i>
+                    </button>
+                </li>
+                <li>
+                    <button id="tts-toggle" class="action-btn" title="Toggle Text-to-Speech">
+                        <i class="fa fa-volume-up"></i>
+                    </button>
+                </li>
+                <li>
+                    <button id="export-chat-btn" class="action-btn" title="Export Chat">
+                        <i class="fa fa-download"></i>
+                    </button>
+                </li>
+                <li>
+                    <button id="clear-chat-btn" class="action-btn" title="Clear Chat">
+                        <i class="fa fa-eraser"></i>
+                    </button>
+                </li>
                 <li><a class="nav-link" href="../index.html"><i class="fa fa-home"></i> Home</a></li>
             </ul>
         </nav>
@@ -45,6 +65,9 @@
                         </label>
                         <input id="file-input" type="file" name="file" aria-label="Attach file" hidden />
                         <textarea id="message-input" placeholder="Type your message..." rows="1"></textarea>
+                        <button id="voice-btn" type="button" class="voice-btn" title="Voice input (Speech-to-Text)">
+                            <i class="fa fa-microphone"></i>
+                        </button>
                         <button id="send-btn" type="submit">
                             <i class="fa fa-paper-plane"></i>
                         </button>

@@ -1,5 +1,6 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from datetime import datetime
+from typing import Optional
 
 
 class Request(BaseModel):
@@ -9,3 +10,5 @@ class Request(BaseModel):
     type: str  # "laptop", "mobile", "travel", "expense"
     status: str  # pending | approved | rejected | cancelled
     approver_by: str  # who approves this
+    created_at: Optional[datetime] = Field(default_factory=datetime.now)
+    updated_at: Optional[datetime] = Field(default_factory=datetime.now)

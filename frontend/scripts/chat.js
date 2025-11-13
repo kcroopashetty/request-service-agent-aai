@@ -1,6 +1,11 @@
 import ApiService from "../services/apiService.js";
+import notify from "../utils/notifications.js";
+import theme from "../utils/theme.js";
+import { exportToJSON } from "../utils/export.js";
+
 const AgentName = "agent";
 let activeSessionId = "";
+let chatHistory = [];
 
 document.addEventListener("DOMContentLoaded", () => {
     initChat();
@@ -17,9 +22,67 @@ const messagesEl = document.getElementById("messages");
 const form = document.getElementById("chat-form");
 const input = document.getElementById("message-input");
 const sendBtn = document.getElementById("send-btn");
+const voiceBtn = document.getElementById("voice-btn");
 const fileInput = document.getElementById("file-input");
 const uploadList = document.getElementById("upload-list");
 const sessionsListWrapper = document.getElementById("sessions-list");
+
+// Voice recognition setup
+let recognition = null;
+let isRecording = false;
+
+// Text-to-Speech setup
+let ttsEnabled = localStorage.getItem('ttsEnabled') === 'true';
+const synth = window.speechSynthesis;
+
+function speakText(text) {
+    if (!ttsEnabled || !synth) return;
+    synth.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+    utterance.volume = 1.0;
+    synth.speak(utterance);
+}
+
+if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+
+    recognition.onstart = () => {
+        isRecording = true;
+        voiceBtn.classList.add('recording');
+        voiceBtn.innerHTML = '<i class="fa fa-stop"></i>';
+        notify.info('Listening...');
+    };
+
+    recognition.onresult = (event) => {
+        const transcript = Array.from(event.results)
+            .map(result => result[0].transcript)
+            .join('');
+        input.value = transcript;
+    };
+
+    recognition.onend = () => {
+        isRecording = false;
+        voiceBtn.classList.remove('recording');
+        voiceBtn.innerHTML = '<i class="fa fa-microphone"></i>';
+    };
+
+    recognition.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        notify.error('Voice input failed: ' + event.error);
+        isRecording = false;
+        voiceBtn.classList.remove('recording');
+        voiceBtn.innerHTML = '<i class="fa fa-microphone"></i>';
+    };
+} else {
+    console.warn('Speech recognition not supported');
+    if (voiceBtn) voiceBtn.style.display = 'none';
+}
 
 function listSessions() {
     ApiService.get(`/apps/${AgentName}/users/user/sessions`)
@@ -61,12 +124,17 @@ function createSessionElement(id) {
 }
 
 function createSession() {
-    ApiService.post(`/apps/${AgentName}/users/user/sessions`)
+    ApiService.post(`/apps/${AgentName}/users/user/sessions`, {})
         .then((session) => {
             activeSessionId = session.id;
+            messagesEl.innerHTML = "";
             createSessionElement(session.id);
+            notify.success("New session created!");
         })
-        .catch((error) => console.error(error));
+        .catch((error) => {
+            console.error("Session creation error:", error);
+            notify.error("Failed to create session. Check console for details.");
+        });
 }
 
 function deleteSession(event, id) {
@@ -77,12 +145,18 @@ function deleteSession(event, id) {
             const wasActive = session.classList.contains("active");
             if (wasActive) {
                 const firstSession = document.querySelector(".session-item");
-                firstSession.classList.add("active");
-                activeSession = firstSession.getAttribute("id");
+                if (firstSession) {
+                    firstSession.classList.add("active");
+                    activeSession = firstSession.getAttribute("id");
+                }
             }
             session.parentNode.removeChild(session);
+            notify.success("Session deleted!");
         })
-        .catch((error) => console.error(error));
+        .catch((error) => {
+            console.error(error);
+            notify.error("Failed to delete session.");
+        });
 }
 
 function updateActiveSession(id) {
@@ -105,16 +179,40 @@ function updateActiveSession(id) {
 }
 
 function renderEvents(events) {
+    chatHistory = [];
     for (let i = 0; i < events.length; i++) {
         if (events[i].content) {
             appendMessage(events[i].content, events[i].content.role);
+            chatHistory.push({
+                role: events[i].content.role,
+                message: events[i].content.parts?.[0]?.text || "[Non-text content]",
+                timestamp: new Date().toISOString()
+            });
         }
     }
+}
+
+// Export chat history
+function exportChat() {
+    if (chatHistory.length === 0) {
+        notify.warning("No messages to export.");
+        return;
+    }
+    exportToJSON(chatHistory, `chat_${activeSessionId}_${new Date().toISOString().split('T')[0]}.json`);
+    notify.success("Chat exported successfully!");
+}
+
+// Clear chat
+function clearChat() {
+    messagesEl.innerHTML = "";
+    chatHistory = [];
+    notify.info("Chat cleared.");
 }
 
 // Helpers
 function appendMessage(content, who = "model") {
     const el = document.createElement("div");
+    let textToSpeak = '';
     if (content.parts) {
         for (let i = 0; i < content.parts.length; i++) {
             const part = content.parts[i];
@@ -125,6 +223,7 @@ function appendMessage(content, who = "model") {
                 el.className = `message ${who}`;
                 if (part.text) {
                     el.innerHTML = marked.parse(part.text);
+                    if (who === 'model') textToSpeak = part.text;
                 }
                 if (part.functionCall) {
                     el.classList.add("function");
@@ -141,6 +240,7 @@ function appendMessage(content, who = "model") {
     }
     messagesEl.appendChild(el);
     messagesEl.scrollTop = messagesEl.scrollHeight;
+    if (textToSpeak && who === 'model') speakText(textToSpeak);
     return el;
 }
 
@@ -247,6 +347,11 @@ async function sendMessage(text, attachedFile = null) {
     }
 
     appendMessage({ parts }, "user");
+    chatHistory.push({
+        role: "user",
+        message: text || "[File attachment]",
+        timestamp: new Date().toISOString()
+    });
     clearFilePreview();
 
     const payload = {
@@ -267,10 +372,61 @@ async function sendMessage(text, attachedFile = null) {
         });
     } catch (err) {
         console.error("Chat error:", err);
+        notify.error("Failed to send message.");
     } finally {
         setSending(false);
     }
 }
+
+// Setup theme toggle
+function setupThemeToggle() {
+    const themeBtn = document.getElementById("theme-toggle");
+    if (themeBtn) {
+        themeBtn.addEventListener("click", () => {
+            const newTheme = theme.toggle();
+            themeBtn.innerHTML = newTheme === 'dark' ? '<i class="fa fa-sun"></i>' : '<i class="fa fa-moon"></i>';
+        });
+    }
+}
+
+// Setup export button
+function setupExport() {
+    const exportBtn = document.getElementById("export-chat-btn");
+    if (exportBtn) {
+        exportBtn.addEventListener("click", exportChat);
+    }
+}
+
+// Setup clear button
+function setupClear() {
+    const clearBtn = document.getElementById("clear-chat-btn");
+    if (clearBtn) {
+        clearBtn.addEventListener("click", clearChat);
+    }
+}
+
+// Setup TTS toggle
+function setupTTS() {
+    const ttsBtn = document.getElementById('tts-toggle');
+    if (ttsBtn) {
+        ttsBtn.classList.toggle('active', ttsEnabled);
+        ttsBtn.innerHTML = ttsEnabled ? '<i class="fa fa-volume-up"></i>' : '<i class="fa fa-volume-mute"></i>';
+        ttsBtn.addEventListener('click', () => {
+            ttsEnabled = !ttsEnabled;
+            localStorage.setItem('ttsEnabled', ttsEnabled);
+            ttsBtn.classList.toggle('active', ttsEnabled);
+            ttsBtn.innerHTML = ttsEnabled ? '<i class="fa fa-volume-up"></i>' : '<i class="fa fa-volume-mute"></i>';
+            notify.info(ttsEnabled ? 'Text-to-Speech enabled' : 'Text-to-Speech disabled');
+            if (!ttsEnabled) synth.cancel();
+        });
+    }
+}
+
+// Initialize enhancements
+setupThemeToggle();
+setupExport();
+setupClear();
+setupTTS();
 
 // File input handler
 fileInput.addEventListener("change", (e) => {
@@ -280,6 +436,17 @@ fileInput.addEventListener("change", (e) => {
         showFilePreview(file);
     }
 });
+
+// Voice button handler
+if (voiceBtn && recognition) {
+    voiceBtn.addEventListener('click', () => {
+        if (isRecording) {
+            recognition.stop();
+        } else {
+            recognition.start();
+        }
+    });
+}
 
 // Form submit
 form.addEventListener("submit", async (e) => {
