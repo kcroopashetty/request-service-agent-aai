@@ -213,34 +213,38 @@ function clearChat() {
 function appendMessage(content, who = "model") {
     const el = document.createElement("div");
     let textToSpeak = '';
+    let hasContent = false;
+    
     if (content.parts) {
         for (let i = 0; i < content.parts.length; i++) {
             const part = content.parts[i];
-            if (part.functionResponse) {
-                el.className = `message model function`;
-                el.innerHTML = `<i class="fa fa-check"></i> ${part.functionResponse.name}`;
-            } else {
-                el.className = `message ${who}`;
-                if (part.text) {
-                    el.innerHTML = marked.parse(part.text);
-                    if (who === 'model') textToSpeak = part.text;
-                }
-                if (part.functionCall) {
-                    el.classList.add("function");
-                    el.innerHTML = `<i class="fa fa-bolt"></i> ${part.functionCall.name}`;
-                }
-                if (part.inlineData) {
-                    const mediaEl = createMediaElement(part.inlineData);
-                    if (mediaEl) {
-                        el.appendChild(mediaEl);
-                    }
+            // Skip function calls and responses - only show text
+            if (part.functionResponse || part.functionCall) {
+                continue;
+            }
+            
+            el.className = `message ${who}`;
+            if (part.text) {
+                el.innerHTML = marked.parse(part.text);
+                if (who === 'model') textToSpeak = part.text;
+                hasContent = true;
+            }
+            if (part.inlineData) {
+                const mediaEl = createMediaElement(part.inlineData);
+                if (mediaEl) {
+                    el.appendChild(mediaEl);
+                    hasContent = true;
                 }
             }
         }
     }
-    messagesEl.appendChild(el);
-    messagesEl.scrollTop = messagesEl.scrollHeight;
-    if (textToSpeak && who === 'model') speakText(textToSpeak);
+    
+    // Only append if there's actual content to show
+    if (hasContent) {
+        messagesEl.appendChild(el);
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+        if (textToSpeak && who === 'model') speakText(textToSpeak);
+    }
     return el;
 }
 
